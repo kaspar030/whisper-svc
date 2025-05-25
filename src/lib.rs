@@ -82,7 +82,7 @@ impl WhisperAudio {
         let audio_sample_rate = decoder.sample_rate();
         let audio_channels = decoder.channels();
 
-        info!("audio sample rate: {audio_sample_rate} channels: {audio_channels}");
+        debug!("decoding AAC, sample rate: {audio_sample_rate} channels: {audio_channels}");
 
         match audio_channels {
             0 | 3.. => return Err(anyhow!("invalid channel number")),
