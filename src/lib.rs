@@ -211,7 +211,6 @@ impl WhisperAudio {
 
                         // The samples may now be access via the `samples()` function.
                         sample_count += buf.samples().len();
-                        print!("\rDecoded {} samples", sample_count);
                         decoded.extend_from_slice(buf.samples());
                     }
                 }
@@ -222,7 +221,7 @@ impl WhisperAudio {
 
         match audio_channels {
             2 => {
-                println!("converting to mono...");
+                debug!("converting to mono...");
                 decoded =
                     whisper_rs::convert_stereo_to_mono_audio(&decoded).map_err(|s| anyhow!(s))?;
             }
@@ -305,7 +304,7 @@ pub async fn transcribe(
     language: Option<WhisperLanguage>,
 ) -> Result<String, Error> {
     debug!(
-        "processing audio data (size: {:.2})",
+        "processing audio data (length: {:.2}s)",
         audio_data.len().as_secs_f32()
     );
 
