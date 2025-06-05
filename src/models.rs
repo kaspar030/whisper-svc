@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use anyhow::{Context as _, anyhow};
 use once_cell::sync::OnceCell;
 use tracing::debug;
@@ -20,10 +22,24 @@ fn params<'a>() -> WhisperContextParameters<'a> {
     params
 }
 
+static MODEL_PATH: OnceCell<PathBuf> = OnceCell::new();
+
+pub fn set_model_directory(path: &str) -> Result<(), anyhow::Error> {
+    MODEL_PATH
+        .set(PathBuf::from(path))
+        .map_err(|_| anyhow!("model path already set"))?;
+    Ok(())
+}
+
 fn open_model(name: &str) -> Result<WhisperContext, anyhow::Error> {
-    let mut model_path = dirs::data_dir().ok_or(anyhow!("could not determine models directory"))?;
-    model_path.push("whisper-models");
-    model_path.push(name);
+    let model_path = MODEL_PATH.get_or_try_init(|| {
+        let mut model_path =
+            dirs::data_dir().ok_or(anyhow!("could not determine models directory"))?;
+        model_path.push("whisper-models");
+        Ok::<PathBuf, anyhow::Error>(model_path)
+    })?;
+
+    let mut model_path = model_path.join(name);
     model_path.set_extension("bin");
 
     WhisperContext::new_with_params(model_path.to_str().unwrap(), params())

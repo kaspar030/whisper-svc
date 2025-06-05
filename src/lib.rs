@@ -9,7 +9,7 @@ use thiserror::Error;
 use tracing::debug;
 use whisper_rs::install_logging_hooks;
 
-pub use models::WhisperModel;
+pub use models::{WhisperModel, set_model_directory};
 
 mod models;
 mod resample;
