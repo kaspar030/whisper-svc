@@ -98,8 +98,7 @@ impl WhisperAudio {
             .collect();
 
         if audio_channels == 2 {
-            decoded =
-                whisper_rs::convert_stereo_to_mono_audio(&decoded[..]).map_err(|s| anyhow!(s))?;
+            decoded = stereo_to_mono(decoded)?;
         }
 
         let decoded = resample::resample(&decoded[..], audio_sample_rate as u64, 16000u64);
@@ -162,7 +161,7 @@ impl WhisperAudio {
         // Store the track identifier, it will be used to filter packets.
         let track_id = track.id;
 
-        let mut sample_count = 0;
+        let mut _sample_count = 0;
         let mut sample_buf = None;
 
         let mut decoded: Vec<f32> = Vec::new();
@@ -210,7 +209,7 @@ impl WhisperAudio {
                         buf.copy_interleaved_ref(audio_buf);
 
                         // The samples may now be access via the `samples()` function.
-                        sample_count += buf.samples().len();
+                        _sample_count += buf.samples().len();
                         decoded.extend_from_slice(buf.samples());
                     }
                 }
@@ -222,8 +221,7 @@ impl WhisperAudio {
         match audio_channels {
             2 => {
                 debug!("converting to mono...");
-                decoded =
-                    whisper_rs::convert_stereo_to_mono_audio(&decoded).map_err(|s| anyhow!(s))?;
+                decoded = stereo_to_mono(decoded)?;
             }
             1 => (),
             _ => return Err(anyhow!("unexpected channel count")),
@@ -239,6 +237,17 @@ impl WhisperAudio {
     fn len(&self) -> Duration {
         Duration::from_millis((self.audio_data.len() / 16) as u64)
     }
+}
+
+fn stereo_to_mono(decoded: Vec<f32>) -> Result<Vec<f32>> {
+    let (input, []) = decoded.as_chunks::<2>() else {
+        return Err(anyhow!("stereo -> mono failed, half sample missing"));
+    };
+
+    Ok(input
+        .iter()
+        .map(|[left, right]| (left + right) / 2.0)
+        .collect())
 }
 
 #[derive(Default)]

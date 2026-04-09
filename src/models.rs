@@ -91,7 +91,10 @@ impl WhisperModel {
             .expect("failed to create whisper state");
 
         debug!("model state ready, starting inference");
-        let mut params = FullParams::new(SamplingStrategy::default());
+        let mut params = FullParams::new(SamplingStrategy::BeamSearch {
+            beam_size: 5,
+            patience: -1.0,
+        });
         params.set_n_threads(num_cpus::get_physical() as i32);
         params.set_translate(false);
 
@@ -108,20 +111,18 @@ impl WhisperModel {
             .expect("failed to run model");
 
         // fetch the results
-        let num_segments = state.full_n_segments().expect("getting segments");
+        let num_segments = state.full_n_segments();
         if num_segments == 0 {
             debug!("no voice found");
             Err(WhisperError::NoSpeech)
         } else {
             let mut out = Vec::new();
-            for i in 0..num_segments {
-                let segment = state
-                    .full_get_segment_text(i)
-                    .expect("failed to get segment");
-                let start_timestamp = state.full_get_segment_t0(i).expect("getting segment t0");
-                let end_timestamp = state.full_get_segment_t1(i).expect("getting segment t1");
+            for segment in state.as_iter() {
+                let start_timestamp = segment.start_timestamp();
+                let end_timestamp = segment.end_timestamp();
                 debug!("[{} - {}]: {}", start_timestamp, end_timestamp, segment);
-                out.push(segment.trim().to_string());
+                let segment_str = segment.to_string();
+                out.push(segment_str.trim().to_string());
             }
             let transcription = out.join("\n");
             let inference_time = start.elapsed();
